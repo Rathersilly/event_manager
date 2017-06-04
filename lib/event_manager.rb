@@ -23,9 +23,7 @@ end
 
 def clean_phone_number(num)
   num.gsub!(/\D/, "")
-  puts num
   length = num.length
-  puts length
   if length < 10 || length > 11
     num = nil
   elsif length == 11
@@ -42,9 +40,11 @@ end
 puts "EventManager Initialized!"
 
 contents = CSV.open("event_attendees.csv", headers: true, header_converters: :symbol)
-puts contents.headers
 template_letter = File.read("form_letter.erb")
 erb_template = ERB.new(template_letter)
+
+hours_histogram = Hash.new(0)
+day_histogram = Hash.new(0)
 
 contents.each do |row|
   id = row[0]
@@ -52,15 +52,24 @@ contents.each do |row|
   zipcode = row[:zipcode]
   zipcode = clean_zipcode(zipcode)
   homephone = row[:homephone]
-  puts homephone
   homephone = clean_phone_number(homephone)
-  puts homephone
-  legislators = legislators_by_zipcode(zipcode)
 
+  legislators = legislators_by_zipcode(zipcode)
+  time_format = "%m/%d/%y %k:%M"
+  regdate = DateTime.strptime(row[:regdate], time_format)
+  #puts regdate
+  hours_histogram[regdate.hour] += 1
+  day_histogram[regdate.strftime("%A")] += 1
   form_letter = erb_template.result(binding)
-    
-#  save_thank_you_letters(id, form_letter)
+  puts row[:regdate]  
+  save_thank_you_letters(id, form_letter)
 end
 
+hours_histogram.sort_by {|k,v| v}.reverse.each do |k,v|
+  puts "#{k} hundred hours: #{v} signups."
+end
 
+day_histogram.sort_by {|k,v| v}.reverse.each do |k,v|
+  puts "#{k}: #{v} signups."
+end
 
